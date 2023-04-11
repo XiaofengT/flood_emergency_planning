@@ -4,10 +4,13 @@ import numpy as np
 import rasterio
 import sys
 import json
+import networkx as nx
 from pyproj import CRS
 from pyproj import Transformer
 from shapely.geometry import Point
+from shapely.geometry import LineString
 from rtree import index
+from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 
 # Load data into program
 background = rasterio.open(os.path.join('flood_emergency_planning', 'Material', 'background', 'raster-50k_2724246.tif'))
@@ -138,6 +141,91 @@ def nearest_node(user, highest):
     for i in idx.nearest((highest.x, highest.y), 1, objects='raw'):
         near_to_highest = i, solent_itn['roadnodes'][i]['coords']
     return near_to_user, near_to_highest
+
+
+def shortest_path(start, end, buffer_area):
+    # read json ITN
+    with open(solent_itn_json, 'r') as f:
+        solent_itn = json.load(f)
+
+    # clip json ITN based on user location buffer
+    road_links = solent_itn['roadlinks']
+    road_nodes = solent_itn['roadnodes']
+    # delete_links = []
+    # for link in road_links:
+    #     # find links which are out of the 5 km buffer
+    #     if not LineString(road_links[link]['coords']).intersects(buffer_area):
+    #         delete_links.append(link)
+    # # delete links
+    # for delete_link in delete_links:
+    #     road_links.pop(delete_link)
+
+    # import and read raster data
+    dataset2 = dataset.read(1)
+
+    # create network graph
+    g = nx.DiGraph()
+    for link in road_links:
+        # get row and column of the start point based on coordinates
+        start_row, start_col = dataset.index(road_nodes[road_links[link]['start']]['coords'][0],
+                                             road_nodes[road_links[link]['start']]['coords'][1])
+        # get height of the start point based on its row and column
+        start_height = dataset2[start_row][start_col]
+        end_row, end_col = dataset.index(road_nodes[road_links[link]['end']]['coords'][0],
+                                         road_nodes[road_links[link]['end']]['coords'][1])
+        end_height = dataset2[end_row][end_col]
+        # get height difference between start_node and end_node
+        diff_h = end_height - start_height
+
+        # calculate the sum ascent according to each segments in link
+        link_nodes = road_links[link]['coords']
+        link_node_a = link_nodes[0]
+        sum_ascent = 0
+        # iterate to get height differences of each segments
+        for link_node_b in link_nodes[1:]:
+            a_row, a_col = dataset.index(link_node_a[0], link_node_a[1])
+            a_height = dataset2[a_row][a_col]
+            b_row, b_col = dataset.index(link_node_b[0], link_node_b[1])
+            b_height = dataset2[b_row][b_col]
+            ascent = b_height - a_height
+            if ascent > 0:
+                sum_ascent += ascent
+            link_node_a = link_node_b
+
+        # based on distance and ascent, calculate weights
+        length = road_links[link]['length']
+        weight_start_end = length / 5000 * 60 + sum_ascent / 10
+        weight_end_start = length / 5000 * 60 + (sum_ascent - diff_h) / 10
+        # add edges with weights
+        g.add_edge(road_links[link]['start'], road_links[link]['end'], fid=link + '_1', weight=weight_start_end)
+        g.add_edge(road_links[link]['end'], road_links[link]['start'], fid=link + '_2', weight=weight_end_start)
+
+    # get shortest path using dijkstra
+    result = single_source_dijkstra(g, source=start, target=end, weight='weight')
+    weight = result[0]
+    path = result[1]
+    print(weight, path)
+
+    links = []  # this list will be used to populate the feature id (fid) column
+    geom = []  # this list will be used to populate the geometry column
+
+    # create shortest path geometry
+    first_node = path[0]
+    for node in path[1:]:
+        # print(g.edges[first_node, node]['fid'])
+        link_fid = g.edges[first_node, node]['fid']
+        # remove fid suffix '_1', '_2'
+        link_fid = link_fid[:len(link_fid) - 2]
+        links.append(link_fid)
+        geom.append(LineString(road_links[link_fid]['coords']))
+        first_node = node
+
+    # draw shortest path in map
+    shortest_path_gpd = gpd.GeoDataFrame({'fid': links, 'geometry': geom})
+    # shortest_path_gpd.plot()
+    # plt.show()
+
+    return weight, shortest_path_gpd
 
 
 def main():
