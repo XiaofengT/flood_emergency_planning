@@ -254,6 +254,12 @@ def elevation_buffer(buffer_crop):
     return array_elevation_masked
 
 
+def new_extent(input_osgb):
+    elevation_extent = [input_osgb[0] - 5000, input_osgb[0] + 5000, input_osgb[1] - 5000, input_osgb[1] + 5000]
+    display_extent = [input_osgb[0] - 10000, input_osgb[0] + 10000, input_osgb[1] - 10000, input_osgb[1] + 10000]
+    return elevation_extent, display_extent
+
+
 def main():
     input_osgb = input_point()
     # If the point is not inside bounds, exit the function
