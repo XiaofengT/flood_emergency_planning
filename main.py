@@ -311,6 +311,25 @@ def main():
         print('The user input point is not on the Isle of Wight, please exit the application and try again')
         sys.exit(0)
 
+    print('Application processing...')
+    # Create buffer, and find link closest to the user input point and highest elevation point
+    five_km_buffer, buffer_gpd = buffer(input_osgb)
+    highest_pt = highest_point(buffer_gpd)
+    link = nearest_node(input_osgb, highest_pt)
+    # find shortest path, with the starting node and ending node
+    start = link[0][0]
+    end = link[1][0]
+    # start: nearest ITN node to user
+    # end: nearest ITN to highest point
+    # buffer_area: polygon with a 5km radius from the user location
+    time, shortest_route = shortest_path(start, end, five_km_buffer)
+    # Plot the output
+    elevation_extent, display_extent = new_extent(input_osgb)
+    background_image, background_extent = background_img(background)
+    elevation_crop = elevation_buffer(buffer_gpd)
+    plotting(background_image, background_extent, elevation_crop, elevation_extent, display_extent, shortest_route,
+             input_osgb, link, time)
+
 
 if __name__ == '__main__':
     main()
