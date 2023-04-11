@@ -228,6 +228,16 @@ def shortest_path(start, end, buffer_area):
     return weight, shortest_path_gpd
 
 
+# manipulate the background with palette
+def background_img(tiff):
+    back_array = tiff.read(1)
+    palette = np.array([value for key, value in tiff.colormap(1).items()])
+    background_image = palette[back_array]
+    bounds = tiff.bounds
+    extent = [bounds.left, bounds.right, bounds.bottom, bounds.top]
+    return background_image, extent
+
+
 def main():
     input_osgb = input_point()
     # If the point is not inside bounds, exit the function
