@@ -1,5 +1,6 @@
 import os
 import geopandas as gpd
+import numpy as np
 import rasterio
 import sys
 from pyproj import CRS
@@ -78,6 +79,36 @@ def buffer(user_input):
     buffer_gpd.loc[0, 'geometry'] = five_km_buffer
     buffer_gpd.loc[0, 'location'] = 'user input'
     return five_km_buffer, buffer_gpd
+
+
+def highest_point(buffer_area):
+    # Mask rasterio based on user input point's buffer
+    masked_elevation = rasterio.mask.mask(elevation_ras, buffer_area.geometry)
+    # Load the masked result into numpy array for calculating max elevation
+    elevation_array = np.array(masked_elevation[0])
+    max_elev = np.amax(elevation_array)
+    print('The max elevation within 5km of the user input point is: ' + str(max_elev) + ' meters.')
+
+    # use the where function to get the location of the max elevation value in the numpy array
+    max_pos = np.where(elevation_array == np.amax(elevation_array))
+    # print('Tuple of arrays returned : ', max_pos)
+    print('List of coordinates of maximum value in Numpy array : ')
+    # zip the 2 arrays to get the exact coordinates
+    coords = list(zip(max_pos[1], max_pos[2]))
+    # print the coordinates in the array to a list
+    for cord in coords:
+        print('the max elevation value is found here in the array: ' + str(cord))
+    # Extract the rows and columns
+    pos_row = coords[0][0]
+    pos_col = coords[0][1]
+
+    # The raster grid extends 45000 in x-axis and 25000 in y-axis, from bottom to top
+    # The elevation array extends 9000 columns and 5000 rows, with a grid size of 5, from top to bottom
+    highest_x = (pos_col + 1) * 5 + 425000
+    highest_y = (5000 - pos_row) * 5 + 75000
+    highest_pt = Point(highest_x, highest_y)
+    print('The highest point has coordinate in osgb36 (roughly): ' + str(list(highest_pt.coords)))
+    return highest_pt
 
 
 def main():
