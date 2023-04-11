@@ -16,7 +16,7 @@ from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 from cartopy import crs
 
 
-class Find_Shortest_Path:
+class FindShortestPath:
 
     def __init__(self, elevation_ras, out_elevation, solent_itn_json, isle_shape):
         self.elevation_ras = elevation_ras
@@ -143,7 +143,7 @@ class Find_Shortest_Path:
             idx.insert(i, (node[1]['coords'][0], node[1]['coords'][1]), str(node[0]))
         # Creates two empty strings to store the nearest nodes of the user input and the highest point
         near_to_user = ''
-        near_to_highest = ''
+        # near_to_highest = ''
         # Find the nearest node in index and assign it to the string
         for i in idx.nearest((user_point.x, user_point.y), 1, objects='raw'):
             near_to_user = i, solent_itn['roadnodes'][i]['coords']
@@ -337,7 +337,6 @@ class Plotter:
         array_elevation_masked = np.ma.masked_where(array_elevation == 0, array_elevation)
         self.elevation_crop = array_elevation_masked
 
-
     def add_shortest_path(self, time, shortest_route):
         # plot the evacuation route
         shortest_route.plot(ax=self.ax, edgecolor='blue', linewidth=1, zorder=2, label='evacuation route')
@@ -351,7 +350,8 @@ class Plotter:
         self.ax.plot(self.input_osgb[0], self.input_osgb[1], 'ro', markersize=1, label='starting point')
         self.ax.plot(link[1][1][0], link[1][1][1], 'go', markersize=1, label='ending point')
         self.ax.plot(highest_pt.x, highest_pt.y, 'r^', markersize=1, label='highest point')
-        #plt.plot([self.input_osgb[0], link[0][1][0]], [self.input_osgb[1], link[0][1][1]], 'blue', linewidth=1, zorder=2)
+        # plt.plot([self.input_osgb[0], link[0][1][0]], [self.input_osgb[1], link[0][1][1]], 'blue', linewidth=1,
+        # zorder=2)
 
     def plotting(self):
         # set the title
@@ -383,18 +383,16 @@ def main():
     elevation_ras = rasterio.open(os.path.join('flood_emergency_planning', 'Material', 'elevation', 'SZ.asc'))
     out_elevation = os.path.join('flood_emergency_planning', 'Material', 'out_elevation.tif')
     isle_shape = gpd.read_file('flood_emergency_planning/Material/shape/isle_of_wight.shp')
-    solent_itn_json_1 = os.path.join('flood_emergency_planning', 'Material', 'itn', 'solent_itn.json')
     solent_itn_json = os.path.join('flood_emergency_planning', 'Material', 'itn', 'solent_itn.json')
-    dataset = rasterio.open(os.path.join('flood_emergency_planning', 'Material', 'elevation', 'SZ.asc'))
 
-    find_shortest_path = Find_Shortest_Path(elevation_ras, out_elevation, solent_itn_json, isle_shape)
+    find_shortest_path = FindShortestPath(elevation_ras, out_elevation, solent_itn_json, isle_shape)
     input_osgb = find_shortest_path.input_point()
     # If the point is not inside bounds, exit the function
-    if not find_shortest_path.is_inside_bound(input_osgb):
+    if not find_shortest_path.is_inside_bound():
         print('User input point outside of bounding box, please exit the application and try again')
         sys.exit(0)
     # Determine if the point is on the island (it could be outside the bounding box in task 1)
-    if not find_shortest_path.is_on_island(input_osgb):
+    if not find_shortest_path.is_on_island():
         print('The user input point is not on the Isle of Wight, please exit the application and try again')
         sys.exit(0)
 
