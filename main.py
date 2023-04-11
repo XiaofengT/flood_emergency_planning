@@ -386,34 +386,35 @@ def main():
     solent_itn_json_1 = os.path.join('flood_emergency_planning', 'Material', 'itn', 'solent_itn.json')
     solent_itn_json = os.path.join('flood_emergency_planning', 'Material', 'itn', 'solent_itn.json')
     dataset = rasterio.open(os.path.join('flood_emergency_planning', 'Material', 'elevation', 'SZ.asc'))
-    input_osgb = input_point()
+
+    find_shortest_path = Find_Shortest_Path(elevation_ras, out_elevation, solent_itn_json, isle_shape)
+    input_osgb = find_shortest_path.input_point()
     # If the point is not inside bounds, exit the function
-    if not is_inside_bound(input_osgb):
+    if not find_shortest_path.is_inside_bound(input_osgb):
         print('User input point outside of bounding box, please exit the application and try again')
         sys.exit(0)
     # Determine if the point is on the island (it could be outside the bounding box in task 1)
-    if not is_on_island(input_osgb):
+    if not find_shortest_path.is_on_island(input_osgb):
         print('The user input point is not on the Isle of Wight, please exit the application and try again')
         sys.exit(0)
 
     print('Application processing...')
-    # Create buffer, and find link closest to the user input point and highest elevation point
-    five_km_buffer, buffer_gpd = buffer(input_osgb)
-    highest_pt = highest_point(buffer_gpd)
-    link = nearest_node(input_osgb, highest_pt)
-    # find shortest path, with the starting node and ending node
-    start = link[0][0]
-    end = link[1][0]
-    # start: nearest ITN node to user
-    # end: nearest ITN to highest point
-    # buffer_area: polygon with a 5km radius from the user location
-    time, shortest_route = shortest_path(start, end, five_km_buffer)
-    # Plot the output
-    elevation_extent, display_extent = new_extent(input_osgb)
-    background_image, background_extent = background_img(background)
-    elevation_crop = elevation_buffer(buffer_gpd)
-    plotting(background_image, background_extent, elevation_crop, elevation_extent, display_extent, shortest_route,
-             input_osgb, link, time)
+    five_km_buffer, buffer_gpd = find_shortest_path.buffer()
+    # task2
+    highest_pt = find_shortest_path.highest_point()
+    # task3
+    link = find_shortest_path.nearest_node()
+    # task4 find shortest path, with the starting node and ending node
+    time, shortest_route = find_shortest_path.shortest_path()
+
+    # task5 Plot the output
+    plotter = Plotter(background, elevation_ras, out_elevation, input_osgb, buffer_gpd)
+    plotter.new_extent()
+    plotter.background_img()
+    plotter.elevation_buffer()
+    plotter.add_shortest_path(time, shortest_route)
+    plotter.add_links(link, highest_pt)
+    plotter.plotting()
 
 
 if __name__ == '__main__':
