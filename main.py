@@ -66,6 +66,19 @@ def is_on_island(point):
         return False
 
 
+def buffer(user_input):
+    # Create a point based on the input coordinates
+    point = Point(user_input[0], user_input[1])
+    # Create buffer of 5km
+    five_km_buffer = point.buffer(5000)
+    # Create new GeoDataframe in Geopandas
+    buffer_gpd = gpd.GeoDataFrame()
+    # Create geometry column and add insert our 5km buffer
+    buffer_gpd['geometry'] = None
+    buffer_gpd.loc[0, 'geometry'] = five_km_buffer
+    buffer_gpd.loc[0, 'location'] = 'user input'
+    return five_km_buffer, buffer_gpd
+
 
 def main():
     input_osgb = input_point()
