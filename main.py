@@ -3,9 +3,11 @@ import geopandas as gpd
 import numpy as np
 import rasterio
 import sys
+import json
 from pyproj import CRS
 from pyproj import Transformer
 from shapely.geometry import Point
+from rtree import index
 
 # Load data into program
 background = rasterio.open(os.path.join('flood_emergency_planning', 'Material', 'background', 'raster-50k_2724246.tif'))
@@ -109,6 +111,33 @@ def highest_point(buffer_area):
     highest_pt = Point(highest_x, highest_y)
     print('The highest point has coordinate in osgb36 (roughly): ' + str(list(highest_pt.coords)))
     return highest_pt
+
+
+# Find the node closest to the user's input point and the highest point in the range
+def nearest_node(user, highest):
+    user_point = Point(user[0], user[1])
+    # Check whether the user input is overlapped with the highest point. If so, exit the program
+    if user_point == highest:
+        print('Your location is safe and you do not need to move.')
+        sys.exit()
+    # Read itn json file
+    with open(solent_itn_json_1, 'r') as j:
+        solent_itn = json.load(j)
+    # Create an index with the default construction
+    idx = index.Index()
+    # Insert nodes into the index
+    nodes = solent_itn['roadnodes'].items()
+    for i, node in enumerate(nodes):
+        idx.insert(i, (node[1]['coords'][0], node[1]['coords'][1]), str(node[0]))
+    # Creates two empty strings to store the nearest nodes of the user input and the highest point
+    near_to_user = ''
+    near_to_highest = ''
+    # Find the nearest node in index and assign it to the string
+    for i in idx.nearest((user_point.x, user_point.y), 1, objects='raw'):
+        near_to_user = i, solent_itn['roadnodes'][i]['coords']
+    for i in idx.nearest((highest.x, highest.y), 1, objects='raw'):
+        near_to_highest = i, solent_itn['roadnodes'][i]['coords']
+    return near_to_user, near_to_highest
 
 
 def main():
