@@ -5,6 +5,7 @@ import rasterio
 import sys
 import json
 import networkx as nx
+from rasterio.mask import mask
 from pyproj import CRS
 from pyproj import Transformer
 from shapely.geometry import Point
@@ -236,6 +237,21 @@ def background_img(tiff):
     bounds = tiff.bounds
     extent = [bounds.left, bounds.right, bounds.bottom, bounds.top]
     return background_image, extent
+
+
+# crop the elevation raster by the buffer
+def elevation_buffer(buffer_crop):
+    if os.path.exists(out_elevation):
+        os.remove(out_elevation)
+    out_img, out_transform = mask(elevation_ras, buffer_crop.geometry, crop=True)
+    out_meta = elevation_ras.meta.copy()
+    out_meta.update({'height': out_img.shape[1], 'width': out_img.shape[2], 'transform': out_transform})
+    with rasterio.open(out_elevation, 'w', **out_meta) as dest:
+        dest.write(out_img)
+    clipped = rasterio.open(out_elevation)
+    array_elevation = clipped.read(1)
+    array_elevation_masked = np.ma.masked_where(array_elevation == 0, array_elevation)
+    return array_elevation_masked
 
 
 def main():
