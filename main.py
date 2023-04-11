@@ -4,6 +4,7 @@ import rasterio
 import sys
 from pyproj import CRS
 from pyproj import Transformer
+from shapely.geometry import Point
 
 # Load data into program
 background = rasterio.open(os.path.join('flood_emergency_planning', 'Material', 'background', 'raster-50k_2724246.tif'))
@@ -55,8 +56,27 @@ def is_inside_bound(coord):
         return False
 
 
+# Create the function to determine if the point is on island (task 5)
+def is_on_island(point):
+    point_x = Point(point[0], point[1])
+    result = isle_shape.contains(point_x)
+    if result[0]:
+        return True
+    else:
+        return False
+
+
+
 def main():
     input_osgb = input_point()
+    # If the point is not inside bounds, exit the function
+    if not is_inside_bound(input_osgb):
+        print('User input point outside of bounding box, please exit the application and try again')
+        sys.exit(0)
+    # Determine if the point is on the island (it could be outside the bounding box in task 1)
+    if not is_on_island(input_osgb):
+        print('The user input point is not on the Isle of Wight, please exit the application and try again')
+        sys.exit(0)
 
 
 if __name__ == '__main__':
