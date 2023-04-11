@@ -5,6 +5,7 @@ import rasterio
 import sys
 import json
 import networkx as nx
+import matplotlib.pyplot as plt
 from rasterio.mask import mask
 from pyproj import CRS
 from pyproj import Transformer
@@ -12,6 +13,7 @@ from shapely.geometry import Point
 from shapely.geometry import LineString
 from rtree import index
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
+from cartopy import crs
 
 # Load data into program
 background = rasterio.open(os.path.join('flood_emergency_planning', 'Material', 'background', 'raster-50k_2724246.tif'))
@@ -260,6 +262,44 @@ def new_extent(input_osgb):
     return elevation_extent, display_extent
 
 
+def plotting(basemap, basemap_extent, elevation_out, elevation_extent, display_extent, shortest_route, input_osgb, link,
+             time):
+    # set the size of figure
+    fig = plt.figure(figsize=(5, 5), dpi=300)
+    ax = fig.add_subplot(1, 1, 1, projection=crs.OSGB())
+    # set the title
+    plt.title('Evacuation Route to the Highest Point on the Isle of Wight', size=5, fontweight='bold')
+    # show the background with respective extent
+    ax.imshow(basemap, origin='upper', extent=basemap_extent, zorder=0)
+    # show the elevation layer
+    ele = ax.imshow(elevation_out, zorder=2, origin='upper', extent=elevation_extent, alpha=0.5, cmap='terrain')
+    # plot the evacuation route
+    shortest_route.plot(ax=ax, edgecolor='blue', linewidth=1, zorder=2, label='evacuation route')
+    plt.plot([input_osgb[0], link[0][1][0]], [input_osgb[1], link[0][1][1]], 'blue', linewidth=1, zorder=2)
+    # plot the starting point and ending point
+    ax.plot(input_osgb[0], input_osgb[1], 'ro', markersize=1, label='starting point')
+    ax.plot(link[1][1][0], link[1][1][1], 'go', markersize=1, label='ending point')
+    # show the color-bar of elevation layer
+    colorbar = plt.colorbar(ele, shrink=0.75)
+    colorbar.ax.tick_params(labelsize=5)
+    colorbar.set_label('elevation(m)', labelpad=-15, y=1.05, rotation=0, size=5)
+    # plot a scale bar
+    plt.plot([input_osgb[0] - 8000, input_osgb[0] - 6000], [input_osgb[1] - 8000, input_osgb[1] - 8000], 'black',
+             linewidth=1.5, zorder=3)
+    plt.text(input_osgb[0] - 7400, input_osgb[1] - 7850, '2km', size=3)
+    # plot a north arrow
+    plt.arrow(input_osgb[0] - 8000, input_osgb[1] + 6500, 0, 1500, width=0.005, head_width=500)
+    plt.text(input_osgb[0] - 8500, input_osgb[1] + 5500, 'N')
+    # add estimated time
+    t = plt.text(input_osgb[0], input_osgb[1] - 9000, ('Estimated travel time: ' + str(round(time, 1)) + ' minutes'),
+                 size=3)
+    t.set_bbox(dict(facecolor='white', alpha=0.75, edgecolor='white'))
+    # add a legend on map
+    plt.legend(prop={'size': 3})
+    ax.set_extent(display_extent, crs=crs.OSGB())
+    plt.show()
+
+
 def main():
     input_osgb = input_point()
     # If the point is not inside bounds, exit the function
@@ -274,4 +314,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
